@@ -1,10 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log"
+	"math/rand"
+	"net/http"
 	"os"
+	"time"
 
 	customsearch "google.golang.org/api/customsearch/v1"
 	"google.golang.org/api/option"
@@ -42,13 +48,13 @@ func newConfig() *SearchConfig {
 	// todo: vars
 	c.searchType = "image"
 	c.searchSites = []string{"tagesschau.de", "faz.net", "welt.de", "bild.de"}
-	c.searchPerson = "Armin Laschet"
+	c.searchPerson = "erich honecker"
 	return c
 }
 
 func queryBuilder(svc *customsearch.Service, conf *SearchConfig) *customsearch.CseListCall {
-	//resp, err := svc.Cse.List().Cx(conf.cx).Q(conf.query).SearchType(conf.searchType)
-	lst := svc.Cse.List().Cx(conf.cx).SearchType(conf.searchType)
+	// todo: defaults auslagern
+	lst := svc.Cse.List().Cx(conf.cx).SearchType(conf.searchType).Sort("date")
 	query := ""
 	// todo: maybe use 'orTerms' here
 	for i, site := range conf.searchSites {
@@ -62,6 +68,62 @@ func queryBuilder(svc *customsearch.Service, conf *SearchConfig) *customsearch.C
 	lst.Q(query)
 	log.Println("debug searc: ", *lst)
 	return lst
+}
+
+func downloadFile(URL string) ([]byte, error) {
+	response, err := http.Get(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New(response.Status)
+	}
+	var data bytes.Buffer
+	_, err = io.Copy(&data, response.Body)
+	if err != nil {
+		return nil, err
+	}
+	return data.Bytes(), nil
+}
+
+func fetchAndSaveImage(urls []string) error {
+	done := make(chan []byte, len(urls))
+	errch := make(chan error, len(urls))
+	for _, URL := range urls {
+		go func(URL string) {
+			b, err := downloadFile(URL)
+			if err != nil {
+				errch <- err
+				done <- nil
+				return
+			}
+			done <- b
+			errch <- nil
+		}(URL)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	var errStr string
+	for i := 0; i < len(urls); i++ {
+		if err := <-errch; err != nil {
+			errStr = errStr + " " + err.Error()
+		}
+		file, err := os.Create("./data/asd" + fmt.Sprint(rand.Intn(1000000)))
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = io.Copy(file, bytes.NewReader(<-done))
+		if err != nil {
+			return err
+		}
+	}
+	var err error
+	if errStr != "" {
+		err = errors.New(errStr)
+	}
+	return err
 }
 
 func main() {
@@ -78,8 +140,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	urlList := []string{}
 	for i, result := range resp.Items {
 		fmt.Printf("#%d: %s\n", i+1, result.Title)
 		fmt.Printf("\t%s\n", result.Link)
+		urlList = append(urlList, result.Link)
 	}
+	fetchAndSaveImage(urlList)
 }
