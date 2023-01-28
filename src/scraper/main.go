@@ -11,10 +11,12 @@ import (
 )
 
 type SearchConfig struct {
-	apiKey     string
-	cx         string
-	query      string
-	searchType string
+	apiKey       string
+	cx           string
+	query        string
+	searchType   string
+	searchSites  []string
+	searchPerson string
 }
 
 func newConfig() *SearchConfig {
@@ -37,8 +39,29 @@ func newConfig() *SearchConfig {
 		os.Exit(1)
 	}
 	c.query = val
+	// todo: vars
 	c.searchType = "image"
+	c.searchSites = []string{"tagesschau.de", "faz.net", "welt.de", "bild.de"}
+	c.searchPerson = "Armin Laschet"
 	return c
+}
+
+func queryBuilder(svc *customsearch.Service, conf *SearchConfig) *customsearch.CseListCall {
+	//resp, err := svc.Cse.List().Cx(conf.cx).Q(conf.query).SearchType(conf.searchType)
+	lst := svc.Cse.List().Cx(conf.cx).SearchType(conf.searchType)
+	query := ""
+	// todo: maybe use 'orTerms' here
+	for i, site := range conf.searchSites {
+		query += "site:" + site
+		// Dont add 'OR' keyword at the end
+		if i != len(conf.searchSites)-1 {
+			query += " OR "
+		}
+	}
+	query += " " + conf.searchPerson
+	lst.Q(query)
+	log.Println("debug searc: ", *lst)
+	return lst
 }
 
 func main() {
@@ -48,8 +71,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	svcQuery := queryBuilder(svc, conf)
 
-	resp, err := svc.Cse.List().Cx(conf.cx).Q(conf.query).SearchType(conf.searchType).Do()
+	resp, err := svcQuery.Do()
 	if err != nil {
 		log.Fatal(err)
 	}
