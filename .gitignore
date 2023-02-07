@@ -1,3 +1,12 @@
+#Data Directories
+data/raw/
+data/interim/
+data/external/
+data/processed/
+data/test/
+data/training/
+
+
 .DS_Store
 # Binaries for programs and plugins
 *.exe
