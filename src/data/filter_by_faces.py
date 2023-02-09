@@ -4,6 +4,7 @@
 # imports 
 import argparse
 import os
+import shutil
 
 def get_flags():
     # setup argparser, add and parse arguments
@@ -27,6 +28,16 @@ def list_images(dir):
     img_list = [img for img in dir_list if img.endswith('.jpg')]
     return img_list
 
+def move_image(file, src, out):
+    # moves file from src directory to out directory
+    shutil.copy2(src+"/"+file, out+"/"+file)
+    #os.remove(src+"/"+file)
+    return
+
+def check_for_faces(img):
+    # todo
+    return True
+
 def main():
     # get source and output directories from shell flags
     source_directory, output_directory = get_flags()
@@ -34,8 +45,13 @@ def main():
     # create list of files in source directory and filter for .jpg files
     img_list = list_images(source_directory)
 
-    print(f"Source directory {source_directory}\nOutput directory {output_directory}\nImages found in source directory: {img_list}")
+    # move images to output directory if they contain a face
+    for img in img_list:
+        check_for_faces(img)
+        move_image(img, source_directory, output_directory)
 
+    print(f"Source directory {source_directory}\nOutput directory {output_directory}\nImages found in source directory: {img_list}")
+    return 0
 
 if __name__ == "__main__":
     main()
