@@ -47,8 +47,8 @@ def main():
 
     # move images to output directory if they contain a face
     for img in img_list:
-        check_for_faces(img)
-        move_image(img, source_directory, output_directory)
+        if check_for_faces(img):
+            move_image(img, source_directory, output_directory)
 
     print(f"Source directory {source_directory}\nOutput directory {output_directory}\nImages found in source directory: {img_list}")
     return 0
