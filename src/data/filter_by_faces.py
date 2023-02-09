@@ -62,8 +62,12 @@ def main():
     # move images to output directory if they contain a face
     for img in img_list:
         unknown_encoding = get_face_encoding_from_image(source_directory+img)
-        if len(unknown_encoding) != 1:
-            print(f"Multiple or no faces found in {img}")
+        if len(unknown_encoding) > 1:
+            print(f"Multiple faces found in {img}")
+            continue
+
+        if len(unknown_encoding) == 0:
+            print(f"No faces found in {img}")
             continue
 
         if check_for_faces(unknown_encoding, [baerbock, laschet, scholz]):
@@ -71,7 +75,7 @@ def main():
             print(f"Moved image {img}")
             continue
 
-        print(f"No faces found for {img}")
+        print(f"No faces recognized in {img}")
 
     return 0
 
