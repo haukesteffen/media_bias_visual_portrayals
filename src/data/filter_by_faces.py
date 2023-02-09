@@ -5,6 +5,7 @@
 import argparse
 import os
 import shutil
+import face_recognition
 
 def get_flags():
     # setup argparser, add and parse arguments
@@ -30,13 +31,21 @@ def list_images(dir):
 
 def move_image(file, src, out):
     # moves file from src directory to out directory
-    shutil.copy2(src+"/"+file, out+"/"+file)
+    shutil.copy2(src+file, out+file)
     #os.remove(src+"/"+file)
     return
 
-def check_for_faces(img):
-    # todo
-    return True
+def get_face_encoding_from_image(img_path):
+    # load image and create encoding
+    image = face_recognition.load_image_file(img_path)
+    encoding = face_recognition.face_encodings(image)
+    return encoding
+
+def check_for_faces(unknown_encoding, known_encodings):
+    for enc in known_encodings:
+        if face_recognition.compare_faces([enc], unknown_encoding[0])[0]:
+            return True
+    return False
 
 def main():
     # get source and output directories from shell flags
@@ -45,12 +54,25 @@ def main():
     # create list of files in source directory and filter for .jpg files
     img_list = list_images(source_directory)
 
+    # get face encodings
+    baerbock = get_face_encoding_from_image("data/training/annalena_baerbock.jpg")[0]
+    laschet = get_face_encoding_from_image("data/training/armin_laschet.jpg")[0]
+    scholz = get_face_encoding_from_image("data/training/olaf_scholz.jpg")[0]
+
     # move images to output directory if they contain a face
     for img in img_list:
-        if check_for_faces(img):
-            move_image(img, source_directory, output_directory)
+        unknown_encoding = get_face_encoding_from_image(source_directory+img)
+        if len(unknown_encoding) != 1:
+            print(f"Multiple or no faces found in {img}")
+            continue
 
-    print(f"Source directory {source_directory}\nOutput directory {output_directory}\nImages found in source directory: {img_list}")
+        if check_for_faces(unknown_encoding, [baerbock, laschet, scholz]):
+            move_image(img, source_directory, output_directory)
+            print(f"Moved image {img}")
+            continue
+
+        print(f"No faces found for {img}")
+
     return 0
 
 if __name__ == "__main__":
