@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# ./filter_by_faces.py -src data/raw/ -out data/filtered/
+# ./src/data/filter_by_faces.py -src data/raw/ -out data/interim/
 # imports 
 import argparse
 import os
