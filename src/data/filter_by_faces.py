@@ -26,7 +26,7 @@ def get_flags():
 def list_images(dir):
     # returns a list of all images with .jpg type in input directory
     dir_list = os.listdir(dir)
-    img_list = [img for img in dir_list if img.endswith('.jpg')]
+    img_list = [img for img in dir_list if img.endswith('.jpg') or img.endswith('.jpeg')]
     return img_list
 
 def move_image(file, src, out):
