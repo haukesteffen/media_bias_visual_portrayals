@@ -32,7 +32,7 @@ def list_images(dir):
 def move_image(file, src, out):
     # moves file from src directory to out directory
     shutil.copy2(src+file, out+file)
-    #os.remove(src+"/"+file)
+    os.remove(src+"/"+file)
     return
 
 def get_face_encoding_from_image(img_path):
