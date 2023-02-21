@@ -33,7 +33,7 @@ with DAG(
 ) as dag:
 
 	@task.virtualenv(
-		task_id="virtualenv_python", requirements=["dlib", "face-recognition"], system_site_packages=False
+		task_id="virtualenv_python", requirements=["dlib", "face-recognition"], system_site_packages=True
         )
 	def callable_virtualenv():
 		import face_recognition
