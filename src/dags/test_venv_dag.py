@@ -19,10 +19,6 @@ PATH_TO_PYTHON_BINARY = sys.executable
 
 BASE_DIR = tempfile.gettempdir()
 
-'''
-def x():
-	pass'''
-
 
 with DAG(
 	dag_id="example_python_venv_operator",
@@ -42,13 +38,3 @@ with DAG(
 	virtualenv_task = callable_virtualenv()
         
 	virtualenv_task
-
-	'''# [START howto_operator_python_venv_classic]
-	virtual_classic = PythonVirtualenvOperator(
-		task_id="virtualenv_classic",
-	requirements="colorama==0.4.0",
-	python_callable=x,
-	)
-	# [END howto_operator_python_venv_classic]
-
-	virtual_classic'''
