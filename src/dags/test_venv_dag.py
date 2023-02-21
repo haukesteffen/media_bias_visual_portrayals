@@ -34,7 +34,7 @@ with DAG(
 
 	@task.virtualenv(
 		task_id="virtualenv_python", requirements=["cmake", "face-recognition"], system_site_packages=True
-        )
+		)
 	def callable_virtualenv():
 		import face_recognition
 		print(f"face_recognition version {face_recognition.__version__}")
