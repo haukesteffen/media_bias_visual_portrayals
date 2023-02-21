@@ -19,9 +19,9 @@ PATH_TO_PYTHON_BINARY = sys.executable
 
 BASE_DIR = tempfile.gettempdir()
 
-
+'''
 def x():
-	pass
+	pass'''
 
 
 with DAG(
@@ -33,31 +33,17 @@ with DAG(
 ) as dag:
 
 	@task.virtualenv(
-		task_id="virtualenv_python", requirements=["colorama==0.4.0"], system_site_packages=False
+		task_id="virtualenv_python", requirements=["face-recognition"], system_site_packages=False
         )
 	def callable_virtualenv():
-		"""
-		Example function that will be performed in a virtual environment.
-
-		Importing at the module level ensures that it will not attempt to import the
-		library before it is installed.
-		"""
-		from time import sleep
-		from colorama import Back, Fore, Style
-		print(Fore.RED + "some red text")
-		print(Back.GREEN + "and with a green background")
-		print(Style.DIM + "and in dim text")
-		print(Style.RESET_ALL)
-		for _ in range(4):
-			print(Style.DIM + "Please wait...", flush=True)
-			sleep(1)
-		print("Finished")
+		import face_recognition
+		print(f"face_recognition version {face_recognition.__version__}")
 
 	virtualenv_task = callable_virtualenv()
         
 	virtualenv_task
 
-	# [START howto_operator_python_venv_classic]
+	'''# [START howto_operator_python_venv_classic]
 	virtual_classic = PythonVirtualenvOperator(
 		task_id="virtualenv_classic",
 	requirements="colorama==0.4.0",
@@ -65,4 +51,4 @@ with DAG(
 	)
 	# [END howto_operator_python_venv_classic]
 
-	virtual_classic
+	virtual_classic'''
