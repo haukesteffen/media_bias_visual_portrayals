@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	customsearch "google.golang.org/api/customsearch/v1"
 	"google.golang.org/api/option"
 )
@@ -25,6 +27,13 @@ type SearchConfig struct {
 	searchType   string
 	searchSite   string
 	searchPerson string
+	to_db        bool
+}
+
+type dbElement struct {
+	politican int    `db:"politican"`
+	site      string `db:"site"`
+	data      string `db:"data"`
 }
 
 func newConfig() *SearchConfig {
@@ -46,6 +55,7 @@ func newConfig() *SearchConfig {
 	flag.StringVar(&c.searchPerson, "person", "", "Person to search for")
 	flag.StringVar(&c.searchSite, "site", "", "Site to use")
 	flag.StringVar(&c.folder, "dir", "/data/", "Directory to save pictures to")
+	flag.BoolVar(&c.to_db, "db", true, "Write to database")
 	needs_help := flag.Bool("help", false, "Show help")
 	flag.Parse()
 	if *needs_help {
@@ -102,6 +112,33 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 			errch <- nil
 		}(URL)
 	}
+	// TODO das splitt und in funktionen packen
+	if conf.to_db {
+		// todo das hier zu picElement vielleicht?
+		tmp := [][]interface{}{}
+
+		for i := 0; i < len(urls); i++ {
+			tmp = append(tmp, []interface{}{conf.searchPerson, conf.searchSite, <-done})
+		}
+
+		fmt.Println("Before DB connect")
+		//conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+		conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_STRING"))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+			os.Exit(1)
+		}
+		defer conn.Close(context.Background())
+		copyCount, queryErr := conn.CopyFrom(
+			context.Background(),
+			pgx.Identifier{"items"},
+			[]string{"politican", "site", "data"},
+			pgx.CopyFromRows(tmp),
+		)
+		fmt.Println(copyCount)
+		fmt.Println(queryErr)
+		return err
+	}
 
 	var errStr string
 	picNamesBase := path.Join(conf.folder, strings.ReplaceAll(conf.searchPerson, " ", "-")+"_"+conf.searchSite+"_")
@@ -125,6 +162,12 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 		err = errors.New(errStr)
 	}
 	return err
+}
+
+type picElement struct {
+	politican string
+	site      string
+	data      []byte
 }
 
 func main() {
