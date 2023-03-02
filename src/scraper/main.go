@@ -115,30 +115,32 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 	// TODO das splitt und in funktionen packen
 	if conf.to_db {
 		toDB(conf, done, len(urls))
-	}
-
-	var errStr string
-	picNamesBase := path.Join(conf.folder, strings.ReplaceAll(conf.searchPerson, " ", "-")+"_"+conf.searchSite+"_")
-	for i := 0; i < len(urls); i++ {
-		if err := <-errch; err != nil {
-			errStr = errStr + " " + err.Error()
+	} else {
+		var errStr string
+		picNamesBase := path.Join(conf.folder, strings.ReplaceAll(conf.searchPerson, " ", "-")+"_"+conf.searchSite+"_")
+		for i := 0; i < len(urls); i++ {
+			if err := <-errch; err != nil {
+				errStr = errStr + " " + err.Error()
+			}
+			now := time.Now().UnixNano()
+			file, err := os.Create(picNamesBase + fmt.Sprint(now) + ".jpg")
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			_, err = io.Copy(file, bytes.NewReader(<-done))
+			if err != nil {
+				return err
+			}
 		}
-		now := time.Now().UnixNano()
-		file, err := os.Create(picNamesBase + fmt.Sprint(now) + ".jpg")
-		if err != nil {
-			return err
+		var err error
+		if errStr != "" {
+			err = errors.New(errStr)
 		}
-		defer file.Close()
-		_, err = io.Copy(file, bytes.NewReader(<-done))
-		if err != nil {
-			return err
-		}
+		return err
 	}
-	var err error
-	if errStr != "" {
-		err = errors.New(errStr)
-	}
-	return err
+	// todo return besser
+	return nil
 }
 
 func toDB(conf *SearchConfig, receive chan []byte, qlen int) error {
