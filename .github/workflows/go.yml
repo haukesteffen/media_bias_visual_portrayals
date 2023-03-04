@@ -1,0 +1,32 @@
+name: Go
+
+on:
+  push:
+    branches: [ dev-scraper ]
+  pull_request:
+    branches: [ dev-scraper ]
+
+defaults:
+  run:
+    working-directory: ./src/scraper/
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: dev-scraper
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+        cache: true
+        cache-dependency-path: ./src/scraper/go.sum
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./...
