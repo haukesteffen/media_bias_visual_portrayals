@@ -71,11 +71,24 @@ func newConfig() *SearchConfig {
 
 func queryBuilder(svc *customsearch.Service, conf *SearchConfig, startIndex int64) *customsearch.CseListCall {
 	// todo: defaults auslagern
-	lst := svc.Cse.List().Cx(conf.cx).SearchType(conf.searchType).Sort("date:d:s").Num(10).Start(1 + startIndex*10).ImgType("face")
+	//lst := svc.Cse.List().Cx(conf.cx).SearchType(conf.searchType).Sort("date:d:s").Num(10).Start(1 + startIndex*10).ImgType("face")
+	lst := svc.Cse.List().Cx(conf.cx)
+	// default: search for images
+	lst = lst.SearchType(conf.searchType)
+	// Bias results strongly towards newer dates
+	lst = lst.Sort("date:d:s")
+	// 10 results per page
+	resultsPerPage := 10
+	lst = lst.Num(int64(resultsPerPage))
+	// Start at this offset
+	lst = lst.Start(1 + startIndex*int64(resultsPerPage))
+	// Search for faces
+	lst = lst.ImgType("face")
 	query := ""
 	query += "site:" + conf.searchSite
 	query += " " + conf.searchPerson
-	lst.Q(query)
+	// Query layout: `site:${site} ${person}`
+	lst = lst.Q(query)
 	log.Println("debug searc: ", *lst)
 	return lst
 }
