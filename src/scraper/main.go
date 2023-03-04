@@ -127,7 +127,8 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 	}
 	// TODO das splitt und in funktionen packen
 	if conf.to_db {
-		toDB(conf, done, len(urls))
+		err := toDB(conf, done, len(urls))
+		return err
 	} else {
 		var errStr string
 		picNamesBase := path.Join(conf.folder, strings.ReplaceAll(conf.searchPerson, " ", "-")+"_"+conf.searchSite+"_")
@@ -152,8 +153,6 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 		}
 		return err
 	}
-	// todo return besser
-	return nil
 }
 
 func toDB(conf *SearchConfig, receive chan []byte, qlen int) error {
