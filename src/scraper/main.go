@@ -39,6 +39,17 @@ type dbElement struct {
 func newConfig() *SearchConfig {
 	c := &SearchConfig{}
 	// Secret data from env vars
+	// ... search data from args
+	flag.StringVar(&c.searchPerson, "person", "", "Person to search for")
+	flag.StringVar(&c.searchSite, "site", "", "Search for picture on this site")
+	flag.StringVar(&c.folder, "dir", "/data/", "Directory to save pictures to")
+	flag.BoolVar(&c.to_db, "db", false, "Write to database")
+	needs_help := flag.Bool("help", false, "Show help")
+	flag.Parse()
+	if *needs_help {
+		flag.Usage()
+		os.Exit(0)
+	}
 	val, err := os.LookupEnv("SEARCHAPIKEY")
 	if !err {
 		fmt.Fprintln(os.Stderr, "Set SEARCHAPIKEY env")
@@ -51,17 +62,6 @@ func newConfig() *SearchConfig {
 		os.Exit(1)
 	}
 	c.cx = val
-	// ... search data from args
-	flag.StringVar(&c.searchPerson, "person", "", "Person to search for")
-	flag.StringVar(&c.searchSite, "site", "", "Site to use")
-	flag.StringVar(&c.folder, "dir", "/data/", "Directory to save pictures to")
-	flag.BoolVar(&c.to_db, "db", true, "Write to database")
-	needs_help := flag.Bool("help", false, "Show help")
-	flag.Parse()
-	if *needs_help {
-		flag.Usage()
-		os.Exit(0)
-	}
 	if len(c.searchPerson) == 0 || len(c.searchSite) == 0 {
 		log.Fatal("Please provide -person and -site arguments")
 	}
