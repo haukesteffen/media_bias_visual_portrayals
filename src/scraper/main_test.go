@@ -23,4 +23,21 @@ func TestDownloadFile(t *testing.T) {
 			t.Errorf("Expected response to be %v, got %v", want, respStr)
 		}
 	})
+	t.Run("Get failed", func(t *testing.T) {
+		_, err := downloadFile("http://server:123")
+		if err == nil {
+			t.Errorf("Expected an error but got nil")
+		}
+	})
+	t.Run("Not OK status Code", func(t *testing.T) {
+		want := "403 Forbidden"
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		defer server.Close()
+		_, err := downloadFile(server.URL)
+		if err.Error() != fmt.Sprint(want) {
+			t.Errorf("Expected error '%v' but got error '%v'", want, err)
+		}
+	})
 }
