@@ -28,6 +28,11 @@ type SearchConfig struct {
 	searchSite   string
 	searchPerson string
 	to_db        bool
+	dbhostname   string
+	dbport       string
+	dbuser       string
+	dbpassword   string
+	dbdbname     string
 }
 
 type dbElement struct {
@@ -64,6 +69,33 @@ func newConfig() *SearchConfig {
 		log.Fatal("Please provide --person and --site arguments")
 	}
 	c.searchType = "image"
+	if c.to_db {
+		val, err = os.LookupEnv("DBHOSTNAME")
+		if !err {
+			log.Fatal("Set DBHOSTNAME env")
+		}
+		c.dbhostname = val
+		val, err = os.LookupEnv("DBPORT")
+		if !err {
+			log.Fatal("Set DBPORT env")
+		}
+		c.dbport = val
+		val, err = os.LookupEnv("DBUSER")
+		if !err {
+			log.Fatal("Set DBUSER env")
+		}
+		c.dbuser = val
+		val, err = os.LookupEnv("DBPASSWORD")
+		if !err {
+			log.Fatal("Set DBPASSWORD env")
+		}
+		c.dbpassword = val
+		val, err = os.LookupEnv("DBDBNAME")
+		if !err {
+			log.Fatal("Set DBDBNAME env")
+		}
+		c.dbdbname = val
+	}
 	return c
 }
 
@@ -160,7 +192,9 @@ var dbconn *pgx.Conn
 
 func connectDB(conf *SearchConfig) {
 	var connErr error
-	dbconn, connErr = pgx.Connect(context.Background(), os.Getenv("DATABASE_STRING"))
+	databaseString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", conf.dbuser, conf.dbpassword, conf.dbhostname, conf.dbport, conf.dbdbname)
+	//dbconn, connErr = pgx.Connect(context.Background(), os.Getenv("DATABASE_STRING"))
+	dbconn, connErr = pgx.Connect(context.Background(), databaseString)
 	if connErr != nil {
 		log.Fatalf("Unable to connect to database: %v\n", connErr)
 	}
