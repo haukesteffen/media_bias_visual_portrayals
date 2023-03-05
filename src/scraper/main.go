@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	customsearch "google.golang.org/api/customsearch/v1"
 	"google.golang.org/api/option"
 )
@@ -25,48 +27,99 @@ type SearchConfig struct {
 	searchType   string
 	searchSite   string
 	searchPerson string
+	to_db        bool
+	dbhostname   string
+	dbport       string
+	dbuser       string
+	dbpassword   string
+	dbdbname     string
+}
+
+type dbElement struct {
+	politican int    `db:"politican"`
+	site      string `db:"site"`
+	data      string `db:"data"`
 }
 
 func newConfig() *SearchConfig {
 	c := &SearchConfig{}
 	// Secret data from env vars
-	val, err := os.LookupEnv("SEARCHAPIKEY")
-	if !err {
-		fmt.Fprintln(os.Stderr, "Set SEARCHAPIKEY env")
-		os.Exit(1)
-	}
-	c.apiKey = val
-	val, err = os.LookupEnv("SEARCHCX")
-	if !err {
-		fmt.Fprintln(os.Stderr, "Set SEARCHCX env")
-		os.Exit(1)
-	}
-	c.cx = val
 	// ... search data from args
 	flag.StringVar(&c.searchPerson, "person", "", "Person to search for")
-	flag.StringVar(&c.searchSite, "site", "", "Site to use")
+	flag.StringVar(&c.searchSite, "site", "", "Search for picture on this site")
 	flag.StringVar(&c.folder, "dir", "/data/", "Directory to save pictures to")
+	flag.BoolVar(&c.to_db, "db", false, "Write to database")
 	needs_help := flag.Bool("help", false, "Show help")
 	flag.Parse()
 	if *needs_help {
 		flag.Usage()
 		os.Exit(0)
 	}
+	val, err := os.LookupEnv("SEARCHAPIKEY")
+	if !err {
+		log.Fatal("Set SEARCHAPIKEY env")
+	}
+	c.apiKey = val
+	val, err = os.LookupEnv("SEARCHCX")
+	if !err {
+		log.Fatal("Set SEARCHCX env")
+	}
+	c.cx = val
 	if len(c.searchPerson) == 0 || len(c.searchSite) == 0 {
-		log.Fatal("Please provide -person and -site arguments")
+		log.Fatal("Please provide --person and --site arguments")
 	}
 	c.searchType = "image"
+	if c.to_db {
+		val, err = os.LookupEnv("DBHOSTNAME")
+		if !err {
+			log.Fatal("Set DBHOSTNAME env")
+		}
+		c.dbhostname = val
+		val, err = os.LookupEnv("DBPORT")
+		if !err {
+			log.Fatal("Set DBPORT env")
+		}
+		c.dbport = val
+		val, err = os.LookupEnv("DBUSER")
+		if !err {
+			log.Fatal("Set DBUSER env")
+		}
+		c.dbuser = val
+		val, err = os.LookupEnv("DBPASSWORD")
+		if !err {
+			log.Fatal("Set DBPASSWORD env")
+		}
+		c.dbpassword = val
+		val, err = os.LookupEnv("DBDBNAME")
+		if !err {
+			log.Fatal("Set DBDBNAME env")
+		}
+		c.dbdbname = val
+	}
 	return c
 }
 
 func queryBuilder(svc *customsearch.Service, conf *SearchConfig, startIndex int64) *customsearch.CseListCall {
 	// todo: defaults auslagern
-	lst := svc.Cse.List().Cx(conf.cx).SearchType(conf.searchType).Sort("date:d:s").Num(10).Start(1 + startIndex*10).ImgType("face")
+	//lst := svc.Cse.List().Cx(conf.cx).SearchType(conf.searchType).Sort("date:d:s").Num(10).Start(1 + startIndex*10).ImgType("face")
+	lst := svc.Cse.List().Cx(conf.cx)
+	// default: search for images
+	lst = lst.SearchType(conf.searchType)
+	// Bias results strongly towards newer dates
+	lst = lst.Sort("date:d:s")
+	// 10 results per page
+	resultsPerPage := 10
+	lst = lst.Num(int64(resultsPerPage))
+	// Start at this offset
+	lst = lst.Start(1 + startIndex*int64(resultsPerPage))
+	// Search for faces
+	lst = lst.ImgType("face")
 	query := ""
 	query += "site:" + conf.searchSite
 	query += " " + conf.searchPerson
-	lst.Q(query)
-	log.Println("debug searc: ", *lst)
+	// Query layout: `site:${site} ${person}`
+	lst = lst.Q(query)
+	log.Println("debug search: ", *lst)
 	return lst
 }
 
@@ -102,29 +155,76 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 			errch <- nil
 		}(URL)
 	}
+	// TODO das splitt und in funktionen packen
+	if conf.to_db {
+		log.Println("Writing to Database")
+		connectDB(conf)
+		err := toDB(conf, done, len(urls))
+		return err
+	} else {
+		log.Println("Writing to filesystem to folder", conf.folder)
+		var errStr string
+		picNamesBase := path.Join(conf.folder, strings.ReplaceAll(conf.searchPerson, " ", "-")+"_"+conf.searchSite+"_")
+		for i := 0; i < len(urls); i++ {
+			if err := <-errch; err != nil {
+				errStr = errStr + " " + err.Error()
+			}
+			now := time.Now().UnixNano()
+			file, err := os.Create(picNamesBase + fmt.Sprint(now) + ".jpg")
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			_, err = io.Copy(file, bytes.NewReader(<-done))
+			if err != nil {
+				return err
+			}
+		}
+		var err error
+		if errStr != "" {
+			err = errors.New(errStr)
+		}
+		return err
+	}
+}
 
-	var errStr string
-	picNamesBase := path.Join(conf.folder, strings.ReplaceAll(conf.searchPerson, " ", "-")+"_"+conf.searchSite+"_")
-	for i := 0; i < len(urls); i++ {
-		if err := <-errch; err != nil {
-			errStr = errStr + " " + err.Error()
-		}
-		now := time.Now().UnixNano()
-		file, err := os.Create(picNamesBase + fmt.Sprint(now) + ".jpg")
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		_, err = io.Copy(file, bytes.NewReader(<-done))
-		if err != nil {
-			return err
-		}
+var dbconn *pgx.Conn
+
+func connectDB(conf *SearchConfig) {
+	var connErr error
+	databaseString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", conf.dbuser, conf.dbpassword, conf.dbhostname, conf.dbport, conf.dbdbname)
+	//dbconn, connErr = pgx.Connect(context.Background(), os.Getenv("DATABASE_STRING"))
+	dbconn, connErr = pgx.Connect(context.Background(), databaseString)
+	if connErr != nil {
+		log.Fatalf("Unable to connect to database: %v\n", connErr)
 	}
-	var err error
-	if errStr != "" {
-		err = errors.New(errStr)
+	//defer dbconn.Close(context.Background())
+}
+
+func toDB(conf *SearchConfig, receive chan []byte, qlen int) error {
+	// todo das hier zu picElement vielleicht?
+	tmp := [][]interface{}{}
+	// todo vielleicht anders mit q?
+	for i := 0; i < qlen; i++ {
+		tmp = append(tmp, []interface{}{conf.searchPerson, conf.searchSite, <-receive})
 	}
-	return err
+	copyCount, queryErr := dbconn.CopyFrom(
+		context.Background(),
+		pgx.Identifier{"items"},
+		[]string{"politican", "site", "data"},
+		pgx.CopyFromRows(tmp),
+	)
+	if queryErr != nil {
+		log.Printf("Query Error: %v\n", queryErr)
+	}
+	log.Println("CopyCount:", copyCount)
+	return queryErr
+}
+
+type picElement struct {
+	politican string
+	site      string
+	data      []byte
 }
 
 func main() {
