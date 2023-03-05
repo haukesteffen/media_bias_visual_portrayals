@@ -127,6 +127,7 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 	}
 	// TODO das splitt und in funktionen packen
 	if conf.to_db {
+		connectDB(conf)
 		err := toDB(conf, done, len(urls))
 		return err
 	} else {
@@ -155,32 +156,36 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 	}
 }
 
+var dbconn *pgx.Conn
+
+func connectDB(conf *SearchConfig) {
+	var connErr error
+	dbconn, connErr = pgx.Connect(context.Background(), os.Getenv("DATABASE_STRING"))
+	if connErr != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", connErr)
+		os.Exit(1)
+	}
+	//defer dbconn.Close(context.Background())
+}
+
 func toDB(conf *SearchConfig, receive chan []byte, qlen int) error {
 	// todo das hier zu picElement vielleicht?
 	tmp := [][]interface{}{}
-
 	// todo vielleicht anders mit q?
 	for i := 0; i < qlen; i++ {
 		tmp = append(tmp, []interface{}{conf.searchPerson, conf.searchSite, <-receive})
 	}
-
-	fmt.Println("Before DB connect")
-	//conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_STRING"))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
-	}
-	defer conn.Close(context.Background())
-	copyCount, queryErr := conn.CopyFrom(
+	copyCount, queryErr := dbconn.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"items"},
 		[]string{"politican", "site", "data"},
 		pgx.CopyFromRows(tmp),
 	)
-	fmt.Println(copyCount)
-	fmt.Println(queryErr)
-	return err
+	if queryErr != nil {
+		fmt.Fprintf(os.Stderr, "Query Error: %v\n", queryErr)
+	}
+	fmt.Println("copyCount:", copyCount)
+	return queryErr
 }
 
 type picElement struct {
