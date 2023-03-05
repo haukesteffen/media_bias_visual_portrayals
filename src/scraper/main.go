@@ -52,18 +52,16 @@ func newConfig() *SearchConfig {
 	}
 	val, err := os.LookupEnv("SEARCHAPIKEY")
 	if !err {
-		fmt.Fprintln(os.Stderr, "Set SEARCHAPIKEY env")
-		os.Exit(1)
+		log.Fatal("Set SEARCHAPIKEY env")
 	}
 	c.apiKey = val
 	val, err = os.LookupEnv("SEARCHCX")
 	if !err {
-		fmt.Fprintln(os.Stderr, "Set SEARCHCX env")
-		os.Exit(1)
+		log.Fatal("Set SEARCHCX env")
 	}
 	c.cx = val
 	if len(c.searchPerson) == 0 || len(c.searchSite) == 0 {
-		log.Fatal("Please provide -person and -site arguments")
+		log.Fatal("Please provide --person and --site arguments")
 	}
 	c.searchType = "image"
 	return c
@@ -89,7 +87,7 @@ func queryBuilder(svc *customsearch.Service, conf *SearchConfig, startIndex int6
 	query += " " + conf.searchPerson
 	// Query layout: `site:${site} ${person}`
 	lst = lst.Q(query)
-	log.Println("debug searc: ", *lst)
+	log.Println("debug search: ", *lst)
 	return lst
 }
 
@@ -127,10 +125,12 @@ func fetchAndSaveImage(urls []string, conf *SearchConfig) error {
 	}
 	// TODO das splitt und in funktionen packen
 	if conf.to_db {
+		log.Println("Writing to Database")
 		connectDB(conf)
 		err := toDB(conf, done, len(urls))
 		return err
 	} else {
+		log.Println("Writing to filesystem to folder", conf.folder)
 		var errStr string
 		picNamesBase := path.Join(conf.folder, strings.ReplaceAll(conf.searchPerson, " ", "-")+"_"+conf.searchSite+"_")
 		for i := 0; i < len(urls); i++ {
@@ -162,8 +162,7 @@ func connectDB(conf *SearchConfig) {
 	var connErr error
 	dbconn, connErr = pgx.Connect(context.Background(), os.Getenv("DATABASE_STRING"))
 	if connErr != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", connErr)
-		os.Exit(1)
+		log.Fatalf("Unable to connect to database: %v\n", connErr)
 	}
 	//defer dbconn.Close(context.Background())
 }
@@ -182,9 +181,9 @@ func toDB(conf *SearchConfig, receive chan []byte, qlen int) error {
 		pgx.CopyFromRows(tmp),
 	)
 	if queryErr != nil {
-		fmt.Fprintf(os.Stderr, "Query Error: %v\n", queryErr)
+		log.Printf("Query Error: %v\n", queryErr)
 	}
-	fmt.Println("copyCount:", copyCount)
+	log.Println("CopyCount:", copyCount)
 	return queryErr
 }
 
