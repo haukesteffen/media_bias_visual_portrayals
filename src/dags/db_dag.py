@@ -41,7 +41,7 @@ with DAG(
 
 	@task.virtualenv(
 		task_id="virtualenv_python",
-		requirements=["sqlalchemy", "os", "pandas", "numpy", "PIL", "io"], 
+		requirements=["face-recognition", "sqlalchemy", "os", "pandas", "numpy", "PIL", "io"], 
 		system_site_packages=True
 		)
 	def callable_virtualenv():
