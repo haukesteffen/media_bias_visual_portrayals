@@ -1,5 +1,6 @@
 #datetime
 from datetime import timedelta, datetime
+from time import sleep
 
 # The DAG object
 from airflow import DAG
@@ -27,6 +28,8 @@ hello_world_dag = DAG('hello_world_dag',
 
 # python callable function
 def print_hello():
+		print("Hello World!")
+		sleep(600)
 		return 'Hello World! Again'
 
 # Creating first task
