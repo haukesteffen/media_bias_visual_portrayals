@@ -77,7 +77,7 @@ with DAG(
 
 		# create dataframe with images
 		with engine.begin() as con:
-            df = pd.read_sql_query(sql=query, con=con)
+			df = pd.read_sql_query(sql=query, con=con)
 
 		# get face encodings
 		baerbock = get_face_encoding_from_image("data/training/annalena_baerbock.jpg")[0]
@@ -86,7 +86,7 @@ with DAG(
 
 		# move images to output directory if they contain a face
 		df['multiple_faces'], df['no_faces'], df['baerbock'], df['laschet'], df['scholz'] = df.apply(lambda row: check_for_faces(get_face_encoding_from_bytes(row.data), [baerbock, laschet, scholz]), axis=1)
-        print(df.head())
+		print(df.head())
         
 
 		# write back to db
