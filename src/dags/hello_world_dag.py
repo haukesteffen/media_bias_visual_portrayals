@@ -21,6 +21,7 @@ default_args = {
 hello_world_dag = DAG('hello_world_dag',
 		default_args=default_args,
 		description='Hello World DAG',
+		schedule_interval='None', 
 		catchup=False,
 		tags=['example, helloworld']
 )
