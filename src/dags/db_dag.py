@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from airflow import DAG
 from airflow.decorators import task
@@ -30,6 +31,10 @@ def check_for_faces(unknown_encoding, known_encodings):
     contains_scholz = (face_recognition.compare_faces([scholz_encoding], unknown_encoding[0])[0])
 
     return multiple_faces, no_faces, contains_baerbock, contains_laschet, contains_scholz
+
+
+LOGGER = logging.getLogger("airflow.task")
+LOGGER.info("airflow.task >>> 2 - INFO logger test")
 
 with DAG(
 	dag_id="example_db_dag",
