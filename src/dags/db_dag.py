@@ -33,8 +33,11 @@ def check_for_faces(unknown_encoding, known_encodings):
     return multiple_faces, no_faces, contains_baerbock, contains_laschet, contains_scholz
 
 
-LOGGER = logging.getLogger("airflow.task")
-LOGGER.info("airflow.task >>> 2 - INFO logger test")
+# Set Task Logger to INFO for better task logs
+#log = logging.getLogger("airflow.task")
+#handler = logging.StreamHandler(sys.stdout)
+#handler.setLevel(logging.INFO)
+#log.addHandler(handler)
 
 with DAG(
 	dag_id="example_db_dag",
